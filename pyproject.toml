@@ -1,0 +1,23 @@
+[build-system]
+build-backend = "flit_core.buildapi"
+requires = ["flit_core >=3.8.0,<4"]
+
+[project]
+name = "rewriter"
+version = "1.0.0"
+authors = [
+    {name = "Markis Taylor", email = "m@rkis.net"},
+]
+description = "Rewrite python code"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = []
+dependencies = []
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-vv"
+testpaths = [
+  "tests",
+]
