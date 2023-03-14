@@ -1,7 +1,7 @@
 import ast
 from textwrap import dedent
 
-from rewriter.walker import AnyWalker
+from rewriter.walker import Walker
 
 
 def format_str(source: str) -> str:
@@ -10,7 +10,7 @@ def format_str(source: str) -> str:
 
 def generate_new_source(source: str) -> str:
     tree = ast.parse(source)
-    AnyWalker(tree).walk()
+    Walker("test.py", tree).walk()
     return ast.unparse(tree)
 
 

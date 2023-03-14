@@ -1,5 +1,6 @@
 import ast
 from collections.abc import Sequence
+from typing import overload
 
 
 NAME_ANY = "Any"
@@ -7,7 +8,7 @@ NAME_NONE = "None"
 NAME_SELF = "self"
 NAME_TYPING = "typing"
 NAMES_DUNDER = {"__init__"}
-EMPTY_AST: ast.AST = object()
+EMPTY_AST: ast.AST = ast.AST()
 
 
 class Walker:
@@ -16,16 +17,41 @@ class Walker:
     """
 
     root: ast.Module
+    filename: str
     typing_import_from: ast.ImportFrom | None = None
     typing_import_from_has_ANY: bool = False
     typing_import: ast.Import | None = None
+    stats: list[str] = []
 
-    def __init__(self, root: ast.Module) -> None:
+    def __init__(self, filename: str, root: ast.Module) -> None:
+        self.filename = filename
         self.root = root
 
+    @overload
+    def walk(self) -> None:
+        ...
+
+    @overload
+    def walk(self, node: ast.AST, ctx: ast.AST) -> None:
+        ...
+
+    @overload
+    def walk(self, node: list[ast.AST], ctx: ast.AST) -> None:
+        ...
+
+    @overload
+    def walk(self, node: list[ast.stmt], ctx: ast.AST) -> None:
+        ...
+
+    @overload
+    def walk(self, node: list[ast.arg], ctx: ast.AST) -> None:
+        ...
+
     def walk(
-        self, node: ast.AST | list[ast.AST] = EMPTY_AST, ctx: ast.AST | None = None
-    ):
+        self,
+        node: ast.AST | list[ast.AST] | list[ast.stmt] | list[ast.arg] = EMPTY_AST,
+        ctx: ast.AST = EMPTY_AST,
+    ) -> None:
         """
         Recursively walk the tree and fix all methods/arguments missing with Any
         """
@@ -54,7 +80,8 @@ class Walker:
             # print(node.__dict__)
             pass
 
-    def generate_annotation(self, arg: ast.arg, ctx: ast.AST) -> ast.AST | None:
+    def generate_annotation(self, arg: ast.arg) -> ast.Name:
+        self.stats.append(f"Missing arg type - {arg.arg}: {arg.lineno}")
         if self.typing_import_from_has_ANY:
             return ast.Name(id=NAME_ANY)
         elif self.typing_import_from is not None:
@@ -87,7 +114,7 @@ class Walker:
                 return
 
         if not arg.annotation:
-            arg.annotation = self.generate_annotation(arg, ctx)
+            arg.annotation = self.generate_annotation(arg)
 
     def fix_funcdef(self, func: ast.FunctionDef, ctx: ast.AST) -> None:
         if isinstance(ctx, ast.ClassDef):
@@ -96,4 +123,5 @@ class Walker:
                 return
 
         if not func.returns:
+            self.stats.append(f"Missing return - {func.name}: {func.lineno}")
             func.returns = ast.Name(id=NAME_ANY, ctx=func)
