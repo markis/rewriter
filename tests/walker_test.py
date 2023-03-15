@@ -1,7 +1,9 @@
 import ast
 from textwrap import dedent
+from rewriter.options import Options
 
 from rewriter.walker import Walker
+from unittest.mock import Mock
 
 
 def format_str(source: str) -> str:
@@ -9,8 +11,11 @@ def format_str(source: str) -> str:
 
 
 def generate_new_source(source: str) -> str:
+    mock_opts = Mock(spec=Options, filename="test.py")
     tree = ast.parse(source)
-    Walker("test.py", tree).walk()
+    walker = Walker(mock_opts, tree)
+    walker.walk()
+    print(walker.edges)
     return ast.unparse(tree)
 
 
