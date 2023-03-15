@@ -1,4 +1,4 @@
-from ast import parse, unparse, Module
+from ast import Module, parse, unparse
 
 from rewriter.options import Options
 
