@@ -1,9 +1,9 @@
 import ast
 from textwrap import dedent
-from rewriter.options import Options
-
-from rewriter.walker import Walker
 from unittest.mock import Mock
+
+from rewriter.options import Options
+from rewriter.walker import Walker
 
 
 def format_str(source: str) -> str:
