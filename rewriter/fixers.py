@@ -5,7 +5,7 @@ from collections.abc import Sequence
 
 from rewriter.options import Options
 
-NAME_ANY = "ast.AST"
+NAME_ANY = "Any"
 NAME_NONE = "None"
 NAME_SELF = "self"
 NAME_TYPING = "typing"
