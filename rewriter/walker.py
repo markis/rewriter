@@ -60,7 +60,7 @@ class Walker:
             for n in node:
                 self.walk(n, ctx)
         else:
-            if isinstance(node, (ast.Module, ast.ClassDef)):
+            if isinstance(node, ast.Module | ast.ClassDef):
                 self.walk(node.body, node)
             elif isinstance(node, ast.FunctionDef):
                 self.walk(node.body, ctx)
