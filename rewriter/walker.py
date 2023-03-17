@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from pprint import pprint
 from typing import overload
 
-from rewriter.fixers import Fixer
+from rewriter.fixers import Fixer, FixerMap, FixerStats
 from rewriter.options import Options
 
 EMPTY_AST: ast.AST = ast.AST()
@@ -16,38 +16,41 @@ class Walker:
 
     root: ast.Module
     opts: Options
-    stats: list[str] = []
-    fixers: dict[type[ast.AST], list[Fixer]]
+    stats: FixerStats = set()
+    fixers: FixerMap
     edges: list[ast.AST] = []
 
-    def __init__(self, opts: Options, root: ast.Module) -> None:
+    def __init__(self, opts: Options, root: ast.Module, fixers: FixerMap | None = None) -> None:
         self.opts = opts
         self.root = root
-        self.fixers = Fixer.get_fixers(opts)
+        if not fixers:
+            fixers = Fixer.get_fixers(opts)
+        self.fixers = fixers
 
     @overload
     def walk(self) -> None:
         ...
 
     @overload
-    def walk(self, node: ast.AST, ctx: ast.AST) -> None:
+    def walk(self, node: ast.AST, parent: ast.AST, ctx: ast.AST) -> None:
         ...
 
     @overload
-    def walk(self, node: list[ast.AST], ctx: ast.AST) -> None:
+    def walk(self, node: list[ast.AST], parent: ast.AST, ctx: ast.AST) -> None:
         ...
 
     @overload
-    def walk(self, node: list[ast.stmt], ctx: ast.AST) -> None:
+    def walk(self, node: list[ast.stmt], parent: ast.AST, ctx: ast.AST) -> None:
         ...
 
     @overload
-    def walk(self, node: list[ast.arg], ctx: ast.AST) -> None:
+    def walk(self, node: list[ast.arg], parent: ast.AST, ctx: ast.AST) -> None:
         ...
 
     def walk(
         self,
         node: ast.AST | list[ast.AST] | list[ast.stmt] | list[ast.arg] = EMPTY_AST,
+        parent: ast.AST = EMPTY_AST,
         ctx: ast.AST = EMPTY_AST,
     ) -> None:
         """
@@ -58,31 +61,35 @@ class Walker:
 
         if isinstance(node, Sequence):
             for n in node:
-                self.walk(n, ctx)
+                self.walk(n, parent, ctx)
         else:
             if isinstance(node, ast.Module | ast.ClassDef):
-                self.walk(node.body, node)
+                self.walk(node.body, node, node)
             elif isinstance(node, ast.FunctionDef):
-                self.walk(node.body, ctx)
-                self.walk(node.args, ctx)
+                self.walk(node.body, node, ctx)
+                self.walk(node.args, node, ctx)
+            elif isinstance(node, ast.With | ast.For | ast.If):
+                self.walk(node.body, parent, ctx)
             elif isinstance(node, ast.arguments):
-                self.walk(node.args, ctx)
+                self.walk(node.args, parent, ctx)
             else:
                 self.edges.append(node)
 
-            results = self.process_fixers(node, ctx)
-            self.gather_stats(results)
+            results = self.process_fixers(node, parent, ctx)
+            self.collect_stats(results)
 
-    def gather_stats(self, stats: list[str]) -> None:
-        self.stats.extend(stats)
+    def process_fixers(self, node: ast.AST, parent: ast.AST, ctx: ast.AST) -> FixerStats:
+        results: FixerStats = set()
+        for fixer in self.fixers[type(node)]:
+            results.update(fixer.fix(node, parent, ctx))
+        return results
+
+    def collect_stats(self, stats: FixerStats) -> None:
+        self.stats.update(stats)
 
     def print_stats(self) -> None:
         if self.stats:
             pprint(self.opts.filename)
-            pprint(self.stats)
-
-    def process_fixers(self, node: ast.AST, ctx: ast.AST) -> list[str]:
-        results: list[str] = []
-        for fixer in self.fixers[type(node)]:
-            results.extend(fixer.fix(node, ctx))
-        return results
+            fixed = set(map(lambda stat: stat.node, self.stats))
+            for node in fixed:
+                pprint(node.__dict__)
