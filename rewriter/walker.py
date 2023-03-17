@@ -93,5 +93,3 @@ class Walker:
             fixed = set(map(lambda stat: stat.node, self.stats))
             for node in fixed:
                 pprint(node.__dict__)
-
-                print(node.returns.__dict__)
