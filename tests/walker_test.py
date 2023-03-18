@@ -3,35 +3,38 @@ from textwrap import dedent
 from unittest.mock import Mock
 
 from rewriter.options import Options
+from rewriter.parser import unparse_tree
 from rewriter.walker import Walker
 
 
 def format_str(source: str) -> str:
-    return dedent(source).strip()
+    return dedent(source)
 
 
 def generate_new_source(source: str) -> str:
-    mock_opts = Mock(spec=Options, filename="test.py")
+    mock_opts = Mock(spec=Options, filename="test.py", source=source, dry_run=True)
     tree = ast.parse(source)
     walker = Walker(mock_opts, tree)
     walker.walk()
-    print(walker.edges)
-    return ast.unparse(tree)
+    return unparse_tree(mock_opts, tree)
 
 
 def test_func_definition() -> None:
     source = format_str(
         """
         def test(x):
+            # TODO: implement
             pass
         """
     )
     expected = format_str(
         """
         def test(x: Any) -> Any:
+
+            # TODO: implement
             pass
         """
-    )
+    ).lstrip()
 
     assert generate_new_source(source) == expected
 
@@ -40,6 +43,7 @@ def test_class_definition() -> None:
     source = format_str(
         """
         class Test:
+            # TODO: implement
 
             def __init__(self, x):
                 pass
@@ -51,6 +55,7 @@ def test_class_definition() -> None:
     expected = format_str(
         """
         class Test:
+            # TODO: implement
 
             def __init__(self, x: Any) -> None:
                 pass

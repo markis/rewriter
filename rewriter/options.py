@@ -4,6 +4,7 @@ from typing import Protocol
 
 class Options(Protocol):
     filename: str
+    source: str
     dry_run: bool
     print_stats: bool
 
