@@ -23,6 +23,7 @@ def test_func_definition() -> None:
     source = format_str(
         """
         def test(x):
+            # TODO: implement
             pass
         """
     )
@@ -30,6 +31,7 @@ def test_func_definition() -> None:
         """
         def test(x: Any) -> Any:
 
+            # TODO: implement
             pass
         """
     ).lstrip()
@@ -41,6 +43,7 @@ def test_class_definition() -> None:
     source = format_str(
         """
         class Test:
+            # TODO: implement
 
             def __init__(self, x):
                 pass
@@ -52,6 +55,7 @@ def test_class_definition() -> None:
     expected = format_str(
         """
         class Test:
+            # TODO: implement
 
             def __init__(self, x: Any) -> None:
                 pass
