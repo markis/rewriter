@@ -16,7 +16,7 @@ def parse_tree(opts: Options) -> Module:
 
 
 def unparse_tree(opts: Options, tree: Module, stats: FixerStats) -> str:
-    if not stats:
+    if not stats or opts.dry_run:
         return opts.source
 
     result = unparse(tree)
@@ -32,10 +32,10 @@ def unparse_tree(opts: Options, tree: Module, stats: FixerStats) -> str:
 def merge_new_code(opts: Options, result: str, stats: FixerStats) -> str:
     result_lines = result.strip().splitlines()
     original = opts.source.splitlines()
+    ranges = get_ranges(stats)
 
     lineno = 0
     final: list[str] = []
-    ranges = get_ranges(stats)
     differ = Differ()
     for diff in differ.compare(original, result_lines):
         diff_type = diff[0]
@@ -55,8 +55,11 @@ def merge_new_code(opts: Options, result: str, stats: FixerStats) -> str:
             final.append(f"{line}\n")
 
         if opts.verbose:
-            indicator = "*" if in_range else " "
-            print(f"{lineno} {indicator}: {diff_type} {line}")
+            diff_type = "*" if diff_type == "+" and in_range else diff_type
+            print(f"{lineno}: {diff_type} {line}")
+
+    if opts.verbose:
+        print(f"Replacement lines: {sorted(list(ranges))}")
 
     final = add_any_import(final)
 
