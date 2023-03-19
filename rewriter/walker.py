@@ -86,10 +86,3 @@ class Walker:
 
     def collect_stats(self, stats: FixerStats) -> None:
         self.stats.update(stats)
-
-    def print_stats(self) -> None:
-        if self.stats:
-            pprint(self.opts.filename)
-            fixed = set(map(lambda stat: stat.node, self.stats))
-            for node in fixed:
-                pprint(node.__dict__)
