@@ -16,25 +16,22 @@ def generate_new_source(source: str) -> str:
     tree = ast.parse(source)
     walker = Walker(mock_opts, tree)
     walker.walk()
-    return unparse_tree(mock_opts, tree)
+    return unparse_tree(mock_opts, tree, walker.stats)
 
 
 def test_func_definition() -> None:
     source = format_str(
         """
         def test(x):
-            # TODO: implement
             pass
         """
     )
     expected = format_str(
         """
         def test(x: Any) -> Any:
-
-            # TODO: implement
             pass
         """
-    ).lstrip()
+    )
 
     assert generate_new_source(source) == expected
 

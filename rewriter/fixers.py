@@ -14,6 +14,7 @@ FixerStats = set["Stat"]
 
 NAME_ANY = "Any"
 NAME_NONE = "None"
+NAME_CLS = "cls"
 NAME_SELF = "self"
 NAME_TYPING = "typing"
 EMPTY_FIXER_STATS: FixerStats = set()
@@ -22,6 +23,7 @@ EMPTY_FIXER_STATS: FixerStats = set()
 @dataclass(frozen=True)
 class Stat:
     type: str
+    range: tuple[int, int]
     fixed: ast.AST
     node: ast.AST
 
@@ -61,13 +63,18 @@ class ArgumentFixer(Fixer):
         return EMPTY_FIXER_STATS
 
     def fix_arg(self, node: ast.arg, parent: ast.AST, ctx: ast.AST) -> FixerStats:
-        if isinstance(ctx, ast.ClassDef) and node.arg == NAME_SELF:
+        if isinstance(ctx, ast.ClassDef) and node.arg in (NAME_CLS, NAME_SELF):
             return EMPTY_FIXER_STATS
         if node.annotation:
             return EMPTY_FIXER_STATS
 
         node.annotation = ast.Name(id=NAME_ANY)
-        return {Stat(type="missing-arg-type", fixed=node, node=parent)}
+        return {Stat(type="missing-arg-type", fixed=node, node=parent, range=self.get_range(node))}
+
+    def get_range(self, node: ast.arg) -> tuple[int, int]:
+        lineno = node.lineno
+        end_lineno = node.end_lineno or node.lineno
+        return (lineno, end_lineno)
 
 
 class ClassFixer(Fixer):
@@ -86,13 +93,22 @@ class ClassFixer(Fixer):
         if isinstance(ctx, ast.ClassDef):
             if node.name in self.NONE_METHODS:
                 node.returns = ast.Name(id=NAME_NONE, ctx=node)
-                return {Stat(type="missing-return-type-none", fixed=node, node=node)}
+                range = self.get_range(node)
+                return {Stat(type="missing-return-type-none", range=range, fixed=node, node=node)}
 
         if not node.returns:
             node.returns = ast.Name(id=NAME_ANY, ctx=node)
-            return {Stat(type="missing-return-type-any", fixed=node, node=node)}
+            range = self.get_range(node)
+            return {Stat(type="missing-return-type-any", range=range, fixed=node, node=node)}
 
         return EMPTY_FIXER_STATS
+
+    def get_range(self, node: ast.FunctionDef) -> tuple[int, int]:
+        lineno = node.lineno
+        end_lineno = node.end_lineno or node.lineno
+        if node.body:
+            end_lineno = node.body[0].lineno
+        return (lineno, end_lineno)
 
 
 # class ImportFixer:

@@ -8,8 +8,8 @@ tree = parse_tree(opts)
 walker = Walker(opts, tree)
 walker.walk()
 
-if opts.print_stats:
+if opts.verbose:
     walker.print_stats()
 
 if not opts.dry_run:
-    unparse_tree(opts, tree)
+    unparse_tree(opts, tree, walker.stats)
