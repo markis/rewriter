@@ -12,4 +12,4 @@ if opts.print_stats:
     walker.print_stats()
 
 if not opts.dry_run:
-    unparse_tree(opts, tree)
+    unparse_tree(opts, tree, walker.stats)
