@@ -1,7 +1,6 @@
 import re
 from ast import Module, parse, unparse
 from difflib import Differ
-from pprint import pprint
 
 from black import format_str
 from black.mode import Mode, TargetVersion

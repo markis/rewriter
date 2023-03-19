@@ -73,7 +73,7 @@ class ArgumentFixer(Fixer):
 
     def get_range(self, node: ast.arg) -> tuple[int, int]:
         lineno = node.lineno
-        end_lineno = node.end_lineno
+        end_lineno = node.end_lineno or node.lineno
         return (lineno, end_lineno)
 
 
@@ -105,7 +105,7 @@ class ClassFixer(Fixer):
 
     def get_range(self, node: ast.FunctionDef) -> tuple[int, int]:
         lineno = node.lineno
-        end_lineno = node.end_lineno
+        end_lineno = node.end_lineno or node.lineno
         if node.body:
             end_lineno = node.body[0].lineno
         return (lineno, end_lineno)
