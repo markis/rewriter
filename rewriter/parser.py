@@ -1,3 +1,4 @@
+import re
 from ast import Module, parse, unparse
 from difflib import Differ
 from pprint import pprint
@@ -54,7 +55,28 @@ def merge_new_code(opts: Options, result: str, stats: FixerStats) -> str:
         elif diff_type == "+" and in_range:
             final.append(f"{line}\n")
 
+        if opts.verbose:
+            indicator = "*" if in_range else " "
+            print(f"{lineno} {indicator}: {diff_type} {line}")
+
+    final = add_any_import(final)
+
     return "".join(final)
+
+
+def add_any_import(lines: list[str]) -> list[str]:
+    # TODO: This is "good enough" to add the Any import, but this should be revisited
+
+    any_check = re.compile("from typing import .*Any")
+    imports_start = 0
+    for idx, line in enumerate(lines):
+        if line.startswith("from") or line.startswith("import"):
+            imports_start = idx
+        if any_check.match(line):
+            return lines
+
+    lines.insert(imports_start, "from typing import Any\n")
+    return lines
 
 
 def get_ranges(stats: FixerStats) -> set[int]:

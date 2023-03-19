@@ -107,7 +107,7 @@ class ClassFixer(Fixer):
         lineno = node.lineno
         end_lineno = node.end_lineno
         if node.body:
-            end_lineno = node.body[0].lineno - 1
+            end_lineno = node.body[0].lineno
         return (lineno, end_lineno)
 
 
