@@ -1,6 +1,5 @@
 import ast
 from collections.abc import Sequence
-from pprint import pprint
 from typing import overload
 
 from rewriter.fixers import Fixer, FixerMap, FixerStats
