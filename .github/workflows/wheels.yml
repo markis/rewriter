@@ -26,12 +26,10 @@ jobs:
         run: |
           MATRIX=$(
             {
-              cibuildwheel --config-file=cibuildwheel.toml --print-build-identifiers --platform linux . \
+              cibuildwheel --config-file=pyproject.toml --print-build-identifiers --platform linux . \
               | pyp 'json.dumps({"only": x, "os": "ubuntu-latest"})' \
-              && cibuildwheel --config-file=cibuildwheel.toml --print-build-identifiers --platform macos . \
-              | pyp 'json.dumps({"only": x, "os": "macos-latest"})' \
-              && cibuildwheel --config-file=cibuildwheel.toml --print-build-identifiers --platform windows . \
-              | pyp 'json.dumps({"only": x, "os": "windows-latest"})'
+              && cibuildwheel --config-file=pyproject.toml --print-build-identifiers --platform macos . \
+              | pyp 'json.dumps({"only": x, "os": "macos-latest"})'
             } | pyp 'json.dumps(list(map(json.loads, lines)))'
           )
           echo "include=$MATRIX" | tee -a $GITHUB_OUTPUT
@@ -53,7 +51,6 @@ jobs:
       - uses: actions/checkout@v3
       - uses: pypa/cibuildwheel@v2.11.1
         with:
-          config-file: cibuildwheel.toml
           only: ${{ matrix.only }}
 
       - uses: actions/upload-artifact@v3
