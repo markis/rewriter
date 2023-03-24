@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Final, Set
 
 class TargetVersion(Enum):
     PY33 = ...
