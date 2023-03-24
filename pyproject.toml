@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "rewriter"
-version = "1.0.0"
+version = "0.1.0"
 authors = [
     {name = "Markis Taylor", email = "m@rkis.net"},
 ]
@@ -35,11 +35,20 @@ target-version = ["py310"]
 line-length = 100
 
 [tool.mypy]
-files = ["rewriter/**/*.py", "tests/**/*.py"]
+packages = ["rewriter", "tests"]
 strict = true
-ignore_missing_imports = true
+mypy_path = "typings"
+
+[tool.setuptools]
+py-modules = ["rewriter"]
 
 [tool.ruff]
 target-version = "py310"
 line-length = 100
 select = [ "E", "F", "W", "Q", "UP", "I", "N" ]
+
+[tool.hatch]
+
+[tool.hatch.build.targets.wheel.hooks.mypyc]
+dependencies = ["hatch-mypyc"]
+mypy-args = ["--ignore-missing-imports"]
