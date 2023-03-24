@@ -38,7 +38,7 @@ class ImportTracker:
                 )
                 node.names.sort(key=lambda node: node.name)
                 self.change_tracker.add_change(
-                    "update-import", (node.lineno, node.end_lineno or node.lineno), node, node
+                    "update-import", (node.lineno, node.end_lineno or node.lineno)
                 )
                 del self.requested_imports[node.module]
 
@@ -49,4 +49,4 @@ class ImportTracker:
         for module, names in self.requested_imports.items():
             new_import = ast.ImportFrom(module, [ast.alias(name=name) for name in names])
             self.tree.body.insert(idx, new_import)
-            self.change_tracker.add_change("update-import", ranges, new_import, new_import)
+            self.change_tracker.add_change("update-import", ranges)

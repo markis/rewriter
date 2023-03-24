@@ -10,8 +10,6 @@ EMPTY_AST: ast.AST = ast.AST()
 class Change:
     range: Range
     type: str
-    fixed: ast.AST
-    node: ast.AST
 
 
 class ChangeTracker:
@@ -26,18 +24,16 @@ class ChangeTracker:
         ...
 
     @overload
-    def add_change(self, change: str, range: Range, fixed: ast.AST, node: ast.AST) -> None:
+    def add_change(self, change: str, range: Range) -> None:
         ...
 
     def add_change(
         self,
         change: str | Change,
         range: Range = (0, 0),
-        fixed: ast.AST = EMPTY_AST,
-        node: ast.AST = EMPTY_AST,
     ) -> None:
         if isinstance(change, str):
-            self.changes.append(Change(range, change, fixed, node))
+            self.changes.append(Change(range, change))
         else:
             self.changes.append(change)
 

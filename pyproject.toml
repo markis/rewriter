@@ -12,7 +12,12 @@ description = "Rewrite python code"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = []
-dependencies = []
+dependencies = [
+  "black>=23"
+]
+
+[project.scripts]
+rewriter = "rewriter:main"
 
 [tool.coverage.run]
 branch = true
@@ -35,12 +40,9 @@ target-version = ["py310"]
 line-length = 100
 
 [tool.mypy]
-packages = ["rewriter", "tests"]
+packages = ["rewriter"]
 strict = true
 mypy_path = "typings"
-
-[tool.setuptools]
-py-modules = ["rewriter"]
 
 [tool.ruff]
 target-version = "py310"
@@ -50,8 +52,14 @@ select = [ "E", "F", "W", "Q", "UP", "I", "N" ]
 [tool.hatch]
 
 [tool.hatch.build.targets.wheel.hooks.mypyc]
-dependencies = ["hatch-mypyc"]
-mypy-args = ["--ignore-missing-imports"]
+dependencies = [
+  "hatch-mypyc>=0.13.0",
+  "mypy==1.1.1",
+  "black>=23",
+  # Required stubs to be removed when the packages support PEP 561 themselves
+  "types-typed-ast>=1.4.2",
+]
+# mypy-args = ["--config=pyproject.toml"] #["--ignore-missing-imports"]
 
 [tool.cibuildwheel]
 build-frontend = "build"

@@ -86,7 +86,7 @@ class ArgumentFixer(Fixer):
         if not node.annotation:
             node.annotation = ast.Name(id=NAME_ANY)
             self.import_tracker.add_import("Any", "typing")
-            self.change_tracker.add_change("missing-arg-type", self.get_range(node), node, parent)
+            self.change_tracker.add_change("missing-arg-type", self.get_range(node))
 
     def get_range(self, node: ast.arg) -> tuple[int, int]:
         lineno = node.lineno
@@ -122,15 +122,13 @@ class ClassFixer(Fixer):
                         node.returns = ast.Name(id=name, ctx=node)
                     range = self.get_range(node)
                     self.import_tracker.add_import("Any", "typing")
-                    self.change_tracker.add_change(
-                        f"missing-return-type-{name.lower()}", range, node, node
-                    )
+                    self.change_tracker.add_change(f"missing-return-type-{name.lower()}", range)
 
         if not node.returns:
             node.returns = self.guess_return_type(node, ctx)
             range = self.get_range(node)
             self.import_tracker.add_import("Any", "typing")
-            self.change_tracker.add_change("missing-return-type-any", range, node, node)
+            self.change_tracker.add_change("missing-return-type-any", range)
 
     def get_range(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[int, int]:
         lineno = node.lineno
