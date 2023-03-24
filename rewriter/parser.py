@@ -18,7 +18,7 @@ def parse_tree(opts: Options) -> Module:
 def unparse_tree(
     opts: Options, tree: Module, change_tracker: ChangeTracker, import_tracker: ImportTracker
 ) -> str:
-    if not change_tracker.has_changes or opts.dry_run:
+    if not change_tracker.has_changes:
         return opts.source
 
     try:
