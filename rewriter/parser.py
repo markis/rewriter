@@ -1,12 +1,12 @@
-import re
 from ast import Module, parse, unparse
 from difflib import Differ
 
 from black import format_str
 from black.mode import Mode, TargetVersion
 
-from rewriter.fixers import FixerStats
 from rewriter.options import Options
+from rewriter.trackers.imports import ImportTracker
+from rewriter.trackers.stats import ChangeTracker
 
 
 def parse_tree(opts: Options) -> Module:
@@ -15,24 +15,31 @@ def parse_tree(opts: Options) -> Module:
     return parse(opts.source, opts.filename)
 
 
-def unparse_tree(opts: Options, tree: Module, stats: FixerStats) -> str:
-    if not stats or opts.dry_run:
+def unparse_tree(
+    opts: Options, tree: Module, change_tracker: ChangeTracker, import_tracker: ImportTracker
+) -> str:
+    if not change_tracker.has_changes or opts.dry_run:
         return opts.source
 
-    result = unparse(tree)
-    reformatted = reformat(result)
-    final = merge_new_code(opts, reformatted, stats)
+    try:
+        import_tracker.write_new_imports()
+        result = unparse(tree)
+        reformatted = reformat(result)
+        final = merge_new_code(opts, reformatted, change_tracker)
+        if not opts.dry_run:
+            with open(opts.filename, "w") as f:
+                f.write(final)
+        return final
+    except (TypeError, AttributeError) as e:
+        print(f"{opts.filename} failed to unparse")
+        print(e)
+        return opts.source
 
-    if not opts.dry_run:
-        with open(opts.filename, "w") as f:
-            f.write(final)
-    return final
 
-
-def merge_new_code(opts: Options, result: str, stats: FixerStats) -> str:
+def merge_new_code(opts: Options, result: str, change_tracker: ChangeTracker) -> str:
     result_lines = result.strip().splitlines()
     original = opts.source.splitlines()
-    ranges = get_ranges(stats)
+    ranges = change_tracker.get_change_ranges()
 
     lineno = 0
     final: list[str] = []
@@ -61,39 +68,7 @@ def merge_new_code(opts: Options, result: str, stats: FixerStats) -> str:
     if opts.verbose:
         print(f"Replacement lines: {sorted(list(ranges))}")
 
-    final = add_any_import(final)
-
     return "".join(final)
-
-
-def add_any_import(lines: list[str]) -> list[str]:
-    # TODO: This is "good enough" to add the Any import, but this should be revisited
-
-    any_check = re.compile("from typing import .*Any")
-    imports_start = 0
-    for idx, line in enumerate(lines):
-        if line.startswith("from") or line.startswith("import"):
-            imports_start = idx
-        if any_check.match(line):
-            return lines
-
-    lines.insert(imports_start, "from typing import Any\n")
-    return lines
-
-
-def get_ranges(stats: FixerStats) -> set[int]:
-    ranges: set[int] = set()
-    for stat in stats:
-        start, end = stat.range
-        for i in range(start, end):
-            ranges.add(i)
-        else:
-            ranges.add(start)
-    return ranges
-
-
-def is_comment(line: str) -> bool:
-    return line.lstrip().startswith("#")
 
 
 def reformat(code: str) -> str:

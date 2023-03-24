@@ -2,44 +2,46 @@ import ast
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 
 from rewriter.options import Options
+from rewriter.trackers.imports import ImportTracker
+from rewriter.trackers.stats import ChangeTracker
 
 ASTType = type[ast.AST]
 FixTypes = Sequence[ASTType]
 FixerMap = Mapping[ASTType, Sequence["Fixer"]]
-FixerStats = set["Stat"]
 
 
 NAME_ANY = "Any"
+NAME_BOOL = "bool"
+NAME_INT = "int"
 NAME_NONE = "None"
+NAME_STR = "str"
 NAME_CLS = "cls"
 NAME_SELF = "self"
 NAME_TYPING = "typing"
-EMPTY_FIXER_STATS: FixerStats = set()
-
-
-@dataclass(frozen=True)
-class Stat:
-    type: str
-    range: tuple[int, int]
-    fixed: ast.AST
-    node: ast.AST
 
 
 class Fixer(ABC):
     opts: Options
+    import_tracker: ImportTracker
+    change_tracker: ChangeTracker
 
-    def __init__(self, opts: Options) -> None:
+    def __init__(
+        self, opts: Options, stats_tracker: ChangeTracker, import_tracker: ImportTracker
+    ) -> None:
         self.opts = opts
+        self.import_tracker = import_tracker
+        self.change_tracker = stats_tracker
 
     @classmethod
-    def get_fixers(cls, opts: Options) -> FixerMap:
+    def get_fixers(
+        cls, opts: Options, stats_tracker: ChangeTracker, import_tracker: ImportTracker
+    ) -> FixerMap:
         fixers = defaultdict(list)
         for fixer in cls.__subclasses__():
             for fixer_type in fixer.get_fix_types():
-                fixers[fixer_type].append(fixer(opts))
+                fixers[fixer_type].append(fixer(opts, stats_tracker, import_tracker))
         return fixers
 
     @classmethod
@@ -48,28 +50,43 @@ class Fixer(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def fix(self, node: ast.AST, parent: ast.AST, ctx: ast.AST) -> FixerStats:
+    def fix(self, node: ast.AST, parent: ast.AST, ctx: ast.AST) -> None:
         raise NotImplementedError()
 
 
 class ArgumentFixer(Fixer):
     @classmethod
     def get_fix_types(cls) -> FixTypes:
-        return [ast.arg]
+        return [ast.arguments]
 
-    def fix(self, node: ast.AST, parent: ast.AST, ctx: ast.AST) -> FixerStats:
-        if isinstance(node, ast.arg):
-            return self.fix_arg(node, parent, ctx)
-        return EMPTY_FIXER_STATS
+    def fix(self, node: ast.AST, parent: ast.AST, ctx: ast.AST) -> None:
+        if isinstance(node, ast.arguments):
+            self.fix_args(node, parent, ctx)
 
-    def fix_arg(self, node: ast.arg, parent: ast.AST, ctx: ast.AST) -> FixerStats:
+    def fix_args(self, node: ast.arguments, parent: ast.AST, ctx: ast.AST) -> None:
+        if node.vararg:
+            self.fix_arg(node.vararg, parent, ctx)
+
+        if node.kwarg:
+            self.fix_arg(node.kwarg, parent, ctx)
+
+        for arg in node.args:
+            self.fix_arg(arg, parent, ctx)
+
+        for arg in node.posonlyargs:
+            self.fix_arg(arg, parent, ctx)
+
+        for arg in node.kwonlyargs:
+            self.fix_arg(arg, parent, ctx)
+
+    def fix_arg(self, node: ast.arg, parent: ast.AST, ctx: ast.AST) -> None:
         if isinstance(ctx, ast.ClassDef) and node.arg in (NAME_CLS, NAME_SELF):
-            return EMPTY_FIXER_STATS
-        if node.annotation:
-            return EMPTY_FIXER_STATS
+            return
 
-        node.annotation = ast.Name(id=NAME_ANY)
-        return {Stat(type="missing-arg-type", fixed=node, node=parent, range=self.get_range(node))}
+        if not node.annotation:
+            node.annotation = ast.Name(id=NAME_ANY)
+            self.import_tracker.add_import("Any", "typing")
+            self.change_tracker.add_change("missing-arg-type", self.get_range(node), node, parent)
 
     def get_range(self, node: ast.arg) -> tuple[int, int]:
         lineno = node.lineno
@@ -78,58 +95,99 @@ class ArgumentFixer(Fixer):
 
 
 class ClassFixer(Fixer):
-    NONE_METHODS = {"__init__"}
+    METHODS_MAP = [
+        ("None", {"__init__"}),
+        ("bool", {"__lt__", "__le__", "__ne__", "__eq__", "__gt__", "__ge__", "__bool__"}),
+        ("int", {"__hash__"}),
+        ("Self", {"__new__"}),
+        ("str", {"__str__", "__repr__"}),
+    ]
+    UNKNOWN_RETURN: list[ast.Return | ast.Yield | ast.YieldFrom] = []
 
     @classmethod
     def get_fix_types(cls) -> FixTypes:
-        return [ast.FunctionDef]
+        return [ast.FunctionDef, ast.AsyncFunctionDef]
 
-    def fix(self, node: ast.AST, _: ast.AST, ctx: ast.AST) -> FixerStats:
-        if isinstance(node, ast.FunctionDef):
-            return self.fix_func(node, ctx)
-        return EMPTY_FIXER_STATS
+    def fix(self, node: ast.AST, _: ast.AST, ctx: ast.AST) -> None:
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            self.fix_func(node, ctx)
 
-    def fix_func(self, node: ast.FunctionDef, ctx: ast.AST) -> FixerStats:
+    def fix_func(self, node: ast.FunctionDef | ast.AsyncFunctionDef, ctx: ast.AST) -> None:
         if isinstance(ctx, ast.ClassDef):
-            if node.name in self.NONE_METHODS:
-                node.returns = ast.Name(id=NAME_NONE, ctx=node)
-                range = self.get_range(node)
-                return {Stat(type="missing-return-type-none", range=range, fixed=node, node=node)}
+            for name, methods in self.METHODS_MAP:
+                if node.name in methods and not node.returns:
+                    if name == "Self":
+                        node.returns = ast.Name(id=ast.Constant(ctx.name), ctx=node)
+                    else:
+                        node.returns = ast.Name(id=name, ctx=node)
+                    range = self.get_range(node)
+                    self.import_tracker.add_import("Any", "typing")
+                    self.change_tracker.add_change(
+                        f"missing-return-type-{name.lower()}", range, node, node
+                    )
 
         if not node.returns:
-            node.returns = ast.Name(id=NAME_ANY, ctx=node)
+            node.returns = self.guess_return_type(node, ctx)
             range = self.get_range(node)
-            return {Stat(type="missing-return-type-any", range=range, fixed=node, node=node)}
+            self.import_tracker.add_import("Any", "typing")
+            self.change_tracker.add_change("missing-return-type-any", range, node, node)
 
-        return EMPTY_FIXER_STATS
-
-    def get_range(self, node: ast.FunctionDef) -> tuple[int, int]:
+    def get_range(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[int, int]:
         lineno = node.lineno
         end_lineno = node.end_lineno or node.lineno
         if node.body:
             end_lineno = node.body[0].lineno
         return (lineno, end_lineno)
 
+    def guess_return_type(
+        self,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+        ctx: ast.AST,
+    ) -> ast.expr:
+        returns = self.get_returns(node)
+        if returns is self.UNKNOWN_RETURN:
+            return ast.Name(id=NAME_ANY, ctx=node)
+        elif len(returns) == 0:
+            return ast.Name(id=NAME_NONE, ctx=node)
+        elif (  # if only 1 return and it's a call to a class, we can assume it as the type
+            len(returns) == 1
+            and isinstance(returns[0], ast.Return)
+            and isinstance(returns[0].value, ast.Call)
+            and isinstance(returns[0].value.func, ast.Name)
+            and returns[0].value.func.id[0].isupper()
+            and "_" not in returns[0].value.func.id
+        ):
+            name = returns[0].value.func.id
+            if isinstance(ctx, ast.ClassDef) and ctx.name == name:
+                return ast.Constant(value=name)
+            else:
+                return ast.Name(id=name, ctx=node)
+        elif len(returns) == 1:
+            # print(self.opts.filename)
+            # print(returns[0].value.__dict__)
+            return ast.Name(id=NAME_ANY, ctx=node)
+        else:
+            return ast.Name(id=NAME_ANY, ctx=node)
 
-# class ImportFixer:
-#     typing_import_from: ast.ImportFrom | None = None
-#     typing_import_from_has_ANY: bool = False
-#     typing_import: ast.Import | None = None
-#
-#     def check_import(self, node: ast.ImportFrom | ast.Import) -> None:
-#
-#         if self.typing_import_from and self.typing_import_from_has_ANY:
-#             return
-#
-#         if isinstance(node, ast.ImportFrom):
-#             if node.module == NAME_TYPING:
-#                 self.typing_import_from = node
-#                 for name in node.names:
-#                     if name.name == NAME_ANY:
-#                         self.typing_import_from_has_ANY = True
-#                         return
-#         else:
-#             for name in node.names:
-#                 if name.name == NAME_TYPING:
-#                     self.typing_import = node
-#                     return
+    def get_returns(
+        self,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> list[ast.Return | ast.Yield | ast.YieldFrom]:
+        class ReturnVisitor(ast.NodeVisitor):
+            returns: list[ast.Return | ast.Yield | ast.YieldFrom] = []
+
+            def visit_Return(self, node: ast.Return) -> None:  # noqa: N802
+                self.returns.append(node)
+
+            def visit_Yield(self, node: ast.Yield) -> None:  # noqa: N802
+                self.returns.append(node)
+
+            def visit_YieldFrom(self, node: ast.YieldFrom) -> None:  # noqa: N802
+                self.returns.append(node)
+
+        try:
+            visitor = ReturnVisitor()
+            visitor.visit(node)
+            return visitor.returns
+        except RecursionError:
+            return self.UNKNOWN_RETURN
