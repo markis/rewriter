@@ -11,49 +11,60 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  generate_wheels_matrix:
-    name: Generate wheels matrix
+  main:
+    name: sdist + pure wheel
     runs-on: ubuntu-latest
-    outputs:
-      include: ${{ steps.set-matrix.outputs.include }}
+
     steps:
       - uses: actions/checkout@v3
-      - name: Install cibuildwheel and pypyp
+
+      - name: Set up latest Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "*"
+
+      - name: Install latest pip, build, twine
         run: |
-          pipx install cibuildwheel==2.11.1
-          pipx install pypyp==1
-      - id: set-matrix
-        run: |
-          MATRIX=$(
-            {
-              cibuildwheel --config-file=pyproject.toml --print-build-identifiers --platform linux . \
-              | pyp 'json.dumps({"only": x, "os": "ubuntu-latest"})' \
-              && cibuildwheel --config-file=pyproject.toml --print-build-identifiers --platform macos . \
-              | pyp 'json.dumps({"only": x, "os": "macos-latest"})'
-            } | pyp 'json.dumps(list(map(json.loads, lines)))'
-          )
-          echo "include=$MATRIX" | tee -a $GITHUB_OUTPUT
-        env:
-          CIBW_ARCHS_LINUX: x86_64
-          CIBW_ARCHS_MACOS: x86_64 arm64
-          CIBW_ARCHS_WINDOWS: AMD64
+          python -m pip install --upgrade --disable-pip-version-check pip
+          python -m pip install --upgrade build
+      - name: Build wheel and source distributions
+        run: python -m build
+
+      - name: Upload artifacts as workflow artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: sdist
+          path: ./dist/*
 
   build_wheels:
-    name: Build ${{ matrix.only }}
-    needs: generate_wheels_matrix
+    name: mypyc wheels (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.generate_wheels_matrix.outputs.include) }}
+        include:
+          - os: ubuntu-latest
+            name: linux-x86_64
+          - os: macos-11
+            name: macos-x86_64
+            macos_arch: "x86_64"
+          - os: macos-11
+            name: macos-arm64
+            macos_arch: "arm64"
+          - os: macos-11
+            name: macos-universal2
+            macos_arch: "universal2"
 
     steps:
       - uses: actions/checkout@v3
-      - uses: pypa/cibuildwheel@v2.11.1
-        with:
-          only: ${{ matrix.only }}
 
-      - uses: actions/upload-artifact@v3
+      - name: Build wheels via cibuildwheel
+        uses: pypa/cibuildwheel@v2.12.1
+        env:
+          CIBW_ARCHS_MACOS: "${{ matrix.macos_arch }}"
+
+      - name: Upload wheels as workflow artifacts
+        uses: actions/upload-artifact@v3
         with:
-          name: dist
+          name: ${{ matrix.name }}-mypyc-wheels
           path: ./wheelhouse/*.whl
