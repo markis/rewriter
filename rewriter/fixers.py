@@ -173,21 +173,22 @@ class ClassFixer(Fixer):
         self,
         node: ast.FunctionDef | ast.AsyncFunctionDef,
     ) -> list[ast.Return | ast.Yield | ast.YieldFrom]:
-        class ReturnVisitor(ast.NodeVisitor):
-            returns: list[ast.Return | ast.Yield | ast.YieldFrom] = []
-
-            def visit_Return(self, node: ast.Return) -> None:  # noqa: N802
-                self.returns.append(node)
-
-            def visit_Yield(self, node: ast.Yield) -> None:  # noqa: N802
-                self.returns.append(node)
-
-            def visit_YieldFrom(self, node: ast.YieldFrom) -> None:  # noqa: N802
-                self.returns.append(node)
-
         try:
             visitor = ReturnVisitor()
             visitor.visit(node)
             return visitor.returns
         except RecursionError:
             return self.UNKNOWN_RETURN
+
+
+class ReturnVisitor(ast.NodeVisitor):
+    returns: list[ast.Return | ast.Yield | ast.YieldFrom] = []
+
+    def visit_Return(self, node: ast.Return) -> None:  # noqa: N802
+        self.returns.append(node)
+
+    def visit_Yield(self, node: ast.Yield) -> None:  # noqa: N802
+        self.returns.append(node)
+
+    def visit_YieldFrom(self, node: ast.YieldFrom) -> None:  # noqa: N802
+        self.returns.append(node)
