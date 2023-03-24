@@ -5,9 +5,7 @@ from typing import overload
 from rewriter.fixers import Fixer, FixerMap
 from rewriter.options import Options
 from rewriter.trackers.imports import ImportTracker
-from rewriter.trackers.stats import ChangeTracker
-
-EMPTY_AST: ast.AST = ast.AST()
+from rewriter.trackers.stats import EMPTY_AST, ChangeTracker
 
 
 class Walker:

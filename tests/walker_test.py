@@ -1,6 +1,5 @@
 import ast
 from textwrap import dedent
-from unittest import skip
 from unittest.mock import Mock
 
 from rewriter.options import Options
@@ -11,11 +10,11 @@ from rewriter.walker import Walker
 
 
 def format_str(source: str) -> str:
-    return dedent(source)
+    return dedent(source).lstrip()
 
 
 def generate_new_source(source: str) -> str:
-    mock_opts = Mock(spec=Options, filename="test.py", source=source, dry_run=True)
+    mock_opts = Mock(spec=Options, filename="test.py", source=source, dry_run=True, verbose=True)
     tree = ast.parse(source)
     change_tracker = ChangeTracker()
     import_tracker = ImportTracker(change_tracker)
@@ -24,17 +23,23 @@ def generate_new_source(source: str) -> str:
     return unparse_tree(mock_opts, tree, change_tracker, import_tracker)
 
 
-@skip("working on it")
 def test_func_definition() -> None:
     source = format_str(
         """
+        from __future__ import annotations
+
+
         def test(x):
             pass
         """
     )
     expected = format_str(
         """
-        def test(x: Any) -> Any:
+        from __future__ import annotations
+        from typing import Any
+
+
+        def test(x: Any) -> None:
             pass
         """
     )
@@ -45,6 +50,9 @@ def test_func_definition() -> None:
 def test_class_definition() -> None:
     source = format_str(
         """
+        from __future__ import annotations
+
+
         class Test:
             def do(self, x):
                 return 1 / 2
@@ -52,8 +60,12 @@ def test_class_definition() -> None:
     )
     expected = format_str(
         """
+        from __future__ import annotations
+        from typing import Any
+
+
         class Test:
-            def do(self, x) -> float:
+            def do(self, x: Any) -> Any:
                 return 1 / 2
         """
     )
