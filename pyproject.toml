@@ -16,8 +16,11 @@ dependencies = []
 
 [tool.coverage.run]
 branch = true
-source=[
+source = [
   "rewriter",
+]
+omit = [
+  "rewriter/__main__.py"
 ]
 
 [tool.pytest.ini_options]
@@ -34,6 +37,7 @@ line-length = 100
 [tool.mypy]
 files = ["rewriter/**/*.py", "tests/**/*.py"]
 strict = true
+ignore_missing_imports = true
 
 [tool.ruff]
 target-version = "py310"
