@@ -1,3 +1,4 @@
+# pragma: no cover
 from rewriter.options import parse_options
 from rewriter.parser import parse_tree, unparse_tree
 from rewriter.trackers.imports import ImportTracker

@@ -29,7 +29,7 @@ def test_func_definition() -> None:
         from __future__ import annotations
 
 
-        def test(x):
+        def test(x, *args, **kwargs):
             pass
         """
     )
@@ -39,7 +39,7 @@ def test_func_definition() -> None:
         from typing import Any
 
 
-        def test(x: Any) -> None:
+        def test(x: Any, *args: Any, **kwargs: Any) -> None:
             pass
         """
     )
@@ -54,6 +54,9 @@ def test_class_definition() -> None:
 
 
         class Test:
+            def __init__(self, *, x):
+                pass
+
             def do(self, x):
                 return 1 / 2
         """
@@ -65,6 +68,9 @@ def test_class_definition() -> None:
 
 
         class Test:
+            def __init__(self, *, x: Any) -> None:
+                pass
+
             def do(self, x: Any) -> Any:
                 return 1 / 2
         """
