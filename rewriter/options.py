@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from typing import Protocol
+from typing import Any, Protocol
 
 
 class Options(Protocol):
@@ -15,5 +15,6 @@ def parse_options() -> Options:
     parser.add_argument("-d", "--dry-run", action="store_true")
     parser.add_argument("-v", "--verbose", action="store_true")
 
-    opts: Options = parser.parse_args()
+    args: Any = parser.parse_args()
+    opts: Options = args
     return opts
