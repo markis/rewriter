@@ -16,7 +16,7 @@ __all__ = [
 ]
 
 
-def main():
+def main() -> None:
     opts = parse_options()
     tree = parse_tree(opts)
 
