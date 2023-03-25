@@ -12,7 +12,12 @@ description = "Rewrite python code"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = []
-dependencies = []
+dependencies = [
+  "black>=23"
+]
+
+[project.scripts]
+rewriter = "rewriter:main"
 
 [tool.coverage.run]
 branch = true
@@ -35,12 +40,9 @@ target-version = ["py310"]
 line-length = 100
 
 [tool.mypy]
-packages = ["rewriter", "tests"]
+packages = ["rewriter"]
 strict = true
 mypy_path = "typings"
-
-[tool.setuptools]
-py-modules = ["rewriter"]
 
 [tool.ruff]
 target-version = "py310"
@@ -50,74 +52,49 @@ select = [ "E", "F", "W", "Q", "UP", "I", "N" ]
 [tool.hatch]
 
 [tool.hatch.build.targets.wheel.hooks.mypyc]
-dependencies = ["hatch-mypyc"]
-mypy-args = ["--ignore-missing-imports"]
+dependencies = [
+  "hatch-mypyc>=0.13.0",
+  "mypy==1.1.1",
+  "black>=23",
+  # Required stubs to be removed when the packages support PEP 561 themselves
+  "types-typed-ast>=1.4.2",
+]
+# mypy-args = ["--config=pyproject.toml"] #["--ignore-missing-imports"]
 
 [tool.cibuildwheel]
-
 build-frontend = "build"
-
-# Don't build 32-bit wheels or PyPy
-skip = [
-  "*-manylinux_i686",
-  "*-musllinux_i686",
-  "*-win32",
-  "pp*",
-]
-
-# Apple Silicon support
-# When cross-compiling on Intel, it is not possible to test arm64.
-# Warnings will be silenced with the following CIBW_TEST_SKIP.
-macos.archs = ["x86_64", "arm64"]
-test-skip = ["*"] #"*-macosx_arm64"
-
 build-verbosity = 1
-
-linux.before-all = [
-  "yum install -y llvm-toolset-7.0 || yum -v install -y llvm-toolset-7.0",
-]
-
-# before-test = [
-#   "pip install pytest",
-# ]
-# 
-# # pytest looks for configuration files in the parent directories of where the tests live.
-# # since we are trying to run the tests from their installed location, we copy those into
-# # the venv. Ew ew ew.
-# # We don't run external mypyc tests since there's some issue with compilation on the
-# # manylinux image we use.
-# test-command = "python -m rewriter --help"
-# # test-command = """ \
-# #   ( \
-# #      DIR=$(python -c 'import mypy, os; dn = os.path.dirname; print(dn(dn(mypy.__path__[0])))') \
-# #      && cp '{project}/mypy/pytest.ini' '{project}/mypy/conftest.py' $DIR \
-# # \
-# #      && MYPY_TEST_DIR=$(python -c 'import mypy.test; print(mypy.test.__path__[0])') \
-# #      && MYPY_TEST_PREFIX='{project}/mypy' pytest $MYPY_TEST_DIR \
-# # \
-# #      && MYPYC_TEST_DIR=$(python -c 'import mypyc.test; print(mypyc.test.__path__[0])') \
-# #      && MYPY_TEST_PREFIX='{project}/mypy' pytest $MYPYC_TEST_DIR -k 'not test_external' \
-# #    )
-# # """
-
-[tool.cibuildwheel.config-settings]
---build-option = "--use-mypyc"
+# So these are the environments we target:
+# - Python: CPython 3.7+ only
+# - Architecture (64-bit only): amd64 / x86_64, universal2, and arm64
+# - OS: Linux (no musl), Windows, and macOS
+build = "cp3*-*"
+skip = ["*-manylinux_i686", "*-musllinux_*", "*-win32", "pp-*"]
+# This is the bare minimum needed to run the test suite. Pulling in the full
+# test_requirements.txt would download a bunch of other packages not necessary
+# here and would slow down the testing step a fair bit.
+test-command = 'rewriter --help'
+# Skip trying to test arm64 builds on Intel Macs. (so cross-compilation doesn't
+# straight up crash)
+test-skip = ["*-macosx_arm64", "*-macosx_universal2:arm64"]
 
 [tool.cibuildwheel.environment]
+HATCH_BUILD_HOOKS_ENABLE = "1"
 MYPYC_OPT_LEVEL = "3"
 MYPYC_DEBUG_LEVEL = "0"
+# CPython 3.11 wheels aren't available for aiohttp and building a Cython extension
+# from source also doesn't work.
+AIOHTTP_NO_EXTENSIONS = "1"
+
+[tool.cibuildwheel.linux]
+before-build = [
+    "yum install -y clang gcc",
+]
 
 [tool.cibuildwheel.linux.environment]
-# Add llvm paths to environment to eliminate scl usage (like manylinux image does for gcc toolset).
+HATCH_BUILD_HOOKS_ENABLE = "1"
 MYPYC_OPT_LEVEL = "3"
 MYPYC_DEBUG_LEVEL = "0"
-PATH="$PATH:/opt/rh/llvm-toolset-7.0/root/usr/bin"
-LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/rh/llvm-toolset-7.0/root/usr/lib64"
-CC="clang"
-
-[[tool.cibuildwheel.overrides]]
-select = "*musllinux*"
-before-all = [
-  "apk add --no-cache clang",
-]
-environment = { MYPYC_OPT_LEVEL="3", MYPYC_DEBUG_LEVEL="0", CC="clang" }
+# Black needs Clang to compile successfully on Linux.
+CC = "clang"
+AIOHTTP_NO_EXTENSIONS = "1"

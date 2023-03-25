@@ -21,16 +21,12 @@ class Walker:
     def __init__(
         self,
         opts: Options,
-        change_tracker: ChangeTracker | None = None,
-        import_tracker: ImportTracker | None = None,
+        change_tracker: ChangeTracker,
+        import_tracker: ImportTracker,
         fixers: FixerMap | None = None,
     ) -> None:
         self.opts = opts
-        if not change_tracker:
-            change_tracker = ChangeTracker()
         self.change_tracker = change_tracker
-        if not import_tracker:
-            import_tracker = ImportTracker(change_tracker)
         self.import_tracker = import_tracker
         if not fixers:
             fixers = Fixer.get_fixers(opts, change_tracker, import_tracker)
