@@ -3,15 +3,15 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any
 
-from rewriter.fixers import Fixer
 from rewriter.options import Options
 from rewriter.parser import parse_tree, unparse_tree
+from rewriter.trackers.changes import ChangeTracker
 from rewriter.trackers.imports import ImportTracker
-from rewriter.trackers.stats import ChangeTracker
+from rewriter.transformers import Transformer
 from rewriter.walker import Walker
 
 __all__ = [
-    "Fixer",
+    "Transformer",
     "Options",
     "Walker",
     "ImportTracker",
@@ -46,12 +46,12 @@ def main() -> None:
     opts = parse_options()
     tree = parse_tree(opts)
 
-    change_tracker = ChangeTracker()
-    import_tracker = ImportTracker(change_tracker)
-    walker = Walker(opts, change_tracker, import_tracker)
+    changes = ChangeTracker()
+    imports = ImportTracker()
+    walker = Walker(opts, changes, imports)
     walker.walk(tree)
 
-    unparse_tree(opts, tree, change_tracker, import_tracker)
+    unparse_tree(opts, tree, changes, imports)
 
 
 if __name__ == "__main__":

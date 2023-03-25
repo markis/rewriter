@@ -4,12 +4,12 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 
 from rewriter.options import Options
+from rewriter.trackers.changes import ChangeTracker
 from rewriter.trackers.imports import ImportTracker
-from rewriter.trackers.stats import ChangeTracker
 
 ASTType = type[ast.AST]
-FixTypes = Sequence[ASTType]
-FixerMap = Mapping[ASTType, Sequence["Fixer"]]
+TransformTypes = Sequence[ASTType]
+TransformMap = Mapping[ASTType, Sequence["Transformer"]]
 
 
 NAME_ANY = "Any"
@@ -22,71 +22,69 @@ NAME_SELF = "self"
 NAME_TYPING = "typing"
 
 
-class Fixer(ABC):
+class Transformer(ABC):
     opts: Options
-    import_tracker: ImportTracker
-    change_tracker: ChangeTracker
+    imports: ImportTracker
+    changes: ChangeTracker
 
-    def __init__(
-        self, opts: Options, stats_tracker: ChangeTracker, import_tracker: ImportTracker
-    ) -> None:
+    def __init__(self, opts: Options, changes: ChangeTracker, imports: ImportTracker) -> None:
         self.opts = opts
-        self.import_tracker = import_tracker
-        self.change_tracker = stats_tracker
+        self.imports = imports
+        self.changes = changes
 
     @classmethod
-    def get_fixers(
-        cls, opts: Options, stats_tracker: ChangeTracker, import_tracker: ImportTracker
-    ) -> FixerMap:
+    def get_transformers(
+        cls, opts: Options, changes: ChangeTracker, imports: ImportTracker
+    ) -> TransformMap:
         fixers = defaultdict(list)
         for fixer in cls.__subclasses__():
-            for fixer_type in fixer.get_fix_types():
-                fixers[fixer_type].append(fixer(opts, stats_tracker, import_tracker))
+            for fixer_type in fixer.get_transform_types():
+                fixers[fixer_type].append(fixer(opts, changes, imports))
         return fixers
 
     @classmethod
     @abstractmethod
-    def get_fix_types(cls) -> FixTypes:
+    def get_transform_types(cls) -> TransformTypes:
         raise NotImplementedError()
 
     @abstractmethod
-    def fix(self, node: ast.AST, parent: ast.AST, ctx: ast.AST) -> None:
+    def transform(self, node: ast.AST, parent: ast.AST, ctx: ast.AST) -> None:
         raise NotImplementedError()
 
 
-class ArgumentFixer(Fixer):
+class ArgumentTransformer(Transformer):
     @classmethod
-    def get_fix_types(cls) -> FixTypes:
+    def get_transform_types(cls) -> TransformTypes:
         return [ast.arguments]
 
-    def fix(self, node: ast.AST, parent: ast.AST, ctx: ast.AST) -> None:
+    def transform(self, node: ast.AST, parent: ast.AST, ctx: ast.AST) -> None:
         if isinstance(node, ast.arguments):
-            self.fix_args(node, parent, ctx)
+            self.transform_args(node, parent, ctx)
 
-    def fix_args(self, node: ast.arguments, parent: ast.AST, ctx: ast.AST) -> None:
+    def transform_args(self, node: ast.arguments, parent: ast.AST, ctx: ast.AST) -> None:
         if node.vararg:
-            self.fix_arg(node.vararg, parent, ctx)
+            self.transform_arg(node.vararg, parent, ctx)
 
         if node.kwarg:
-            self.fix_arg(node.kwarg, parent, ctx)
+            self.transform_arg(node.kwarg, parent, ctx)
 
         for arg in node.args:
-            self.fix_arg(arg, parent, ctx)
+            self.transform_arg(arg, parent, ctx)
 
         for arg in node.posonlyargs:
-            self.fix_arg(arg, parent, ctx)
+            self.transform_arg(arg, parent, ctx)
 
         for arg in node.kwonlyargs:
-            self.fix_arg(arg, parent, ctx)
+            self.transform_arg(arg, parent, ctx)
 
-    def fix_arg(self, node: ast.arg, parent: ast.AST, ctx: ast.AST) -> None:
+    def transform_arg(self, node: ast.arg, _: ast.AST, ctx: ast.AST) -> None:
         if isinstance(ctx, ast.ClassDef) and node.arg in (NAME_CLS, NAME_SELF):
             return
 
         if not node.annotation:
             node.annotation = ast.Name(id=NAME_ANY)
-            self.import_tracker.add_import("Any", "typing")
-            self.change_tracker.add_change("missing-arg-type", self.get_range(node))
+            self.imports.add_import("Any", "typing")
+            self.changes.add_change("missing-arg-type", self.get_range(node))
 
     def get_range(self, node: ast.arg) -> tuple[int, int]:
         lineno = node.lineno
@@ -94,7 +92,7 @@ class ArgumentFixer(Fixer):
         return (lineno, end_lineno)
 
 
-class ClassFixer(Fixer):
+class ClassTransformer(Transformer):
     METHODS_MAP = [
         ("None", {"__init__"}),
         ("bool", {"__lt__", "__le__", "__ne__", "__eq__", "__gt__", "__ge__", "__bool__"}),
@@ -105,14 +103,14 @@ class ClassFixer(Fixer):
     UNKNOWN_RETURN: list[ast.Return | ast.Yield | ast.YieldFrom] = []
 
     @classmethod
-    def get_fix_types(cls) -> FixTypes:
+    def get_transform_types(cls) -> TransformTypes:
         return [ast.FunctionDef, ast.AsyncFunctionDef]
 
-    def fix(self, node: ast.AST, _: ast.AST, ctx: ast.AST) -> None:
+    def transform(self, node: ast.AST, _: ast.AST, ctx: ast.AST) -> None:
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-            self.fix_func(node, ctx)
+            self.transform_func(node, ctx)
 
-    def fix_func(self, node: ast.FunctionDef | ast.AsyncFunctionDef, ctx: ast.AST) -> None:
+    def transform_func(self, node: ast.FunctionDef | ast.AsyncFunctionDef, ctx: ast.AST) -> None:
         if isinstance(ctx, ast.ClassDef):
             for name, methods in self.METHODS_MAP:
                 if node.name in methods and not node.returns:
@@ -121,14 +119,14 @@ class ClassFixer(Fixer):
                     else:
                         node.returns = ast.Name(id=name, ctx=node)
                     range = self.get_range(node)
-                    self.import_tracker.add_import("Any", "typing")
-                    self.change_tracker.add_change(f"missing-return-type-{name.lower()}", range)
+                    self.imports.add_import("Any", "typing")
+                    self.changes.add_change(f"missing-return-type-{name.lower()}", range)
 
         if not node.returns:
             node.returns = self.guess_return_type(node, ctx)
             range = self.get_range(node)
-            self.import_tracker.add_import("Any", "typing")
-            self.change_tracker.add_change("missing-return-type-any", range)
+            self.imports.add_import("Any", "typing")
+            self.changes.add_change("missing-return-type-any", range)
 
     def get_range(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[int, int]:
         lineno = node.lineno

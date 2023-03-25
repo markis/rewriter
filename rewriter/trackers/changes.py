@@ -1,9 +1,7 @@
-import ast
 from dataclasses import dataclass
 from typing import overload
 
 Range = tuple[int, int]
-EMPTY_AST: ast.AST = ast.AST()
 
 
 @dataclass(frozen=True)

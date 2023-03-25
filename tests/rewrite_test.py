@@ -4,8 +4,8 @@ from unittest.mock import Mock
 
 from rewriter.options import Options
 from rewriter.parser import unparse_tree
+from rewriter.trackers.changes import ChangeTracker
 from rewriter.trackers.imports import ImportTracker
-from rewriter.trackers.stats import ChangeTracker
 from rewriter.walker import Walker
 
 

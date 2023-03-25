@@ -5,8 +5,8 @@ from black import format_str
 from black.mode import Mode, TargetVersion
 
 from rewriter.options import Options
+from rewriter.trackers.changes import ChangeTracker
 from rewriter.trackers.imports import ImportTracker
-from rewriter.trackers.stats import ChangeTracker
 
 
 def parse_tree(opts: Options) -> Module:
@@ -16,16 +16,16 @@ def parse_tree(opts: Options) -> Module:
 
 
 def unparse_tree(
-    opts: Options, tree: Module, change_tracker: ChangeTracker, import_tracker: ImportTracker
+    opts: Options, tree: Module, changes: ChangeTracker, imports: ImportTracker
 ) -> str:
-    if not change_tracker.has_changes:
+    if not changes.has_changes:
         return opts.source
 
     try:
-        import_tracker.write_new_imports()
+        imports.update_tree(tree, changes)
         result = unparse(tree)
         reformatted = reformat(result)
-        final = merge_new_code(opts, reformatted, change_tracker)
+        final = merge_new_code(opts, reformatted, changes)
         if not opts.dry_run:
             with open(opts.filename, "w") as f:
                 f.write(final)
@@ -36,10 +36,10 @@ def unparse_tree(
         return opts.source
 
 
-def merge_new_code(opts: Options, result: str, change_tracker: ChangeTracker) -> str:
+def merge_new_code(opts: Options, result: str, changes: ChangeTracker) -> str:
     result_lines = result.strip().splitlines()
     original = opts.source.splitlines()
-    ranges = change_tracker.get_change_ranges()
+    ranges = changes.get_change_ranges()
 
     lineno = 0
     final: list[str] = []
