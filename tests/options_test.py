@@ -1,6 +1,6 @@
 import pytest
 
-from rewriter.options import parse_options
+from rewriter import parse_options
 
 
 def test_options_parsing() -> None:
