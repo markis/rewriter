@@ -1,12 +1,18 @@
 import ast
 from collections import defaultdict
 from collections.abc import Sequence
+from dataclasses import dataclass
 from operator import attrgetter
 
 from rewriter.trackers.changes import Change
 
 ImportType = ast.Import | ast.ImportFrom
-Import = tuple[str | None, str]
+
+
+@dataclass
+class Import:
+    module: str
+    name: str
 
 
 def update_tree(tree: ast.Module, imports: Sequence[Import]) -> Sequence[Change]:
@@ -15,8 +21,8 @@ def update_tree(tree: ast.Module, imports: Sequence[Import]) -> Sequence[Change]
     current.sort(key=attrgetter("lineno"))
 
     requested: dict[str, set[str]] = defaultdict(set)
-    for module, name in imports:
-        requested[module or ""].add(name)
+    for i in imports:
+        requested[i.module or ""].add(i.name)
 
     for node in current:
         if isinstance(node, ast.ImportFrom) and node.module in requested:
