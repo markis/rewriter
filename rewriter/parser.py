@@ -1,12 +1,13 @@
 from ast import Module, parse, unparse
+from collections.abc import MutableSequence, Sequence
 from difflib import Differ
 
 from black import format_str
 from black.mode import Mode, TargetVersion
 
 from rewriter.options import Options
-from rewriter.trackers.changes import ChangeTracker
-from rewriter.trackers.imports import ImportTracker
+from rewriter.trackers.changes import Change, get_change_ranges
+from rewriter.trackers.imports import Import, update_tree
 
 
 def parse_tree(opts: Options) -> Module:
@@ -16,13 +17,13 @@ def parse_tree(opts: Options) -> Module:
 
 
 def unparse_tree(
-    opts: Options, tree: Module, changes: ChangeTracker, imports: ImportTracker
+    opts: Options, tree: Module, changes: MutableSequence[Change], imports: Sequence[Import]
 ) -> str:
-    if not changes.has_changes:
+    if not changes:
         return opts.source
 
     try:
-        imports.update_tree(tree, changes)
+        changes += update_tree(tree, imports)
         result = unparse(tree)
         reformatted = reformat(result)
         final = merge_new_code(opts, reformatted, changes)
@@ -36,10 +37,10 @@ def unparse_tree(
         return opts.source
 
 
-def merge_new_code(opts: Options, result: str, changes: ChangeTracker) -> str:
+def merge_new_code(opts: Options, result: str, changes: Sequence[Change]) -> str:
     result_lines = result.strip().splitlines()
     original = opts.source.splitlines()
-    ranges = changes.get_change_ranges()
+    ranges = get_change_ranges(changes)
 
     lineno = 0
     final: list[str] = []

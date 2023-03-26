@@ -5,17 +5,17 @@ from typing import Any
 
 from rewriter.options import Options
 from rewriter.parser import parse_tree, unparse_tree
-from rewriter.trackers.changes import ChangeTracker
-from rewriter.trackers.imports import ImportTracker
-from rewriter.transformers import Transformer
-from rewriter.walker import Walker
+from rewriter.trackers.changes import Change
+from rewriter.trackers.imports import Import
+from rewriter.transformers import transform
+from rewriter.walker import walk
 
 __all__ = [
-    "Transformer",
+    "transform",
     "Options",
-    "Walker",
-    "ImportTracker",
-    "ChangeTracker",
+    "walk",
+    "Import",
+    "Change",
     "parse_tree",
     "unparse_tree",
 ]
@@ -46,10 +46,7 @@ def main() -> None:
     opts = parse_options()
     tree = parse_tree(opts)
 
-    changes = ChangeTracker()
-    imports = ImportTracker()
-    walker = Walker(opts, changes, imports)
-    walker.walk(tree)
+    changes, imports = walk(tree, transform)
 
     unparse_tree(opts, tree, changes, imports)
 
