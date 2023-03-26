@@ -1,52 +1,42 @@
 import ast
 from collections import defaultdict
+from collections.abc import Sequence
 from operator import attrgetter
 
-from rewriter.trackers.stats import ChangeTracker
+from rewriter.trackers.changes import Change
 
-Import = ast.Import | ast.ImportFrom
-NewImport = tuple[str | None, str]
+ImportType = ast.Import | ast.ImportFrom
+Import = tuple[str | None, str]
 
 
-class ImportTracker:
-    change_tracker: ChangeTracker
-    tree: ast.Module
-    current_imports: list[Import] | None = None
-    requested_imports: dict[str, set[str]] = defaultdict(set)
+def update_tree(tree: ast.Module, imports: Sequence[Import]) -> Sequence[Change]:
+    changes: list[Change] = []
+    current = [node for node in tree.body if isinstance(node, ast.Import | ast.ImportFrom)]
+    current.sort(key=attrgetter("lineno"))
 
-    def __init__(self, change_tracker: ChangeTracker) -> None:
-        self.change_tracker = change_tracker
+    requested: dict[str, set[str]] = defaultdict(set)
+    for module, name in imports:
+        requested[module or ""].add(name)
 
-    def add_import(self, name: str, module: str | None = None) -> None:
-        self.requested_imports[module or ""].add(name)
+    for node in current:
+        if isinstance(node, ast.ImportFrom) and node.module in requested:
+            node.names.extend([ast.alias(name=name) for name in requested[node.module]])
+            node.names.sort(key=attrgetter("name"))
+            changes.append(Change((node.lineno, node.end_lineno or node.lineno), "update-import"))
+            del requested[node.module]
 
-    def track_current_imports(self, tree: ast.Module) -> None:
-        self.tree = tree
-        self.current_imports = [
-            node for node in tree.body if isinstance(node, ast.Import | ast.ImportFrom)
-        ]
-        self.current_imports.sort(key=attrgetter("lineno"))
-
-    def write_new_imports(self) -> None:
-        if self.current_imports is None:
-            raise ValueError("current_imports was never populated")
-
-        for node in self.current_imports:
-            if isinstance(node, ast.ImportFrom) and node.module in self.requested_imports:
-                node.names.extend(
-                    [ast.alias(name=name) for name in self.requested_imports[node.module]]
-                )
-                node.names.sort(key=lambda node: node.name)
-                self.change_tracker.add_change(
-                    "update-import", (node.lineno, node.end_lineno or node.lineno)
-                )
-                del self.requested_imports[node.module]
-
-        first_import = self.current_imports[0]
-        idx = self.tree.body.index(first_import) + 1
+    first_import = current[0] if len(current) > 0 else None
+    if first_import:
+        idx = tree.body.index(first_import) + 1
         end_lineno = first_import.end_lineno or first_import.lineno
         ranges = (end_lineno, end_lineno)
-        for module, names in self.requested_imports.items():
-            new_import = ast.ImportFrom(module, [ast.alias(name=name) for name in names])
-            self.tree.body.insert(idx, new_import)
-            self.change_tracker.add_change("update-import", ranges)
+    else:
+        idx = 0
+        ranges = (1, 1)
+
+    for module, names in requested.items():
+        new_import = ast.ImportFrom(module, [ast.alias(name=name) for name in names])
+        tree.body.insert(idx, new_import)
+        changes.append(Change(ranges, "update-import"))
+
+    return changes

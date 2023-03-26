@@ -4,9 +4,8 @@ from unittest.mock import Mock
 
 from rewriter.options import Options
 from rewriter.parser import unparse_tree
-from rewriter.trackers.imports import ImportTracker
-from rewriter.trackers.stats import ChangeTracker
-from rewriter.walker import Walker
+from rewriter.transformers import transform
+from rewriter.walker import walk
 
 
 def format_str(source: str) -> str:
@@ -16,11 +15,10 @@ def format_str(source: str) -> str:
 def generate_new_source(source: str) -> str:
     mock_opts = Mock(spec=Options, filename="test.py", source=source, dry_run=True, verbose=True)
     tree = ast.parse(source)
-    change_tracker = ChangeTracker()
-    import_tracker = ImportTracker(change_tracker)
-    walker = Walker(mock_opts, change_tracker, import_tracker)
-    walker.walk(tree)
-    return unparse_tree(mock_opts, tree, change_tracker, import_tracker)
+
+    changes, imports = walk(tree, transform)
+
+    return unparse_tree(mock_opts, tree, changes, imports)
 
 
 def test_func_definition() -> None:
