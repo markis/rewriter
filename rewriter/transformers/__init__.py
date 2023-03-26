@@ -66,7 +66,7 @@ def transform_args(node: AST, parent: AST, ctx: AST) -> TransformerReturnType:
 
         if not node.annotation:
             node.annotation = ast.Name(id=NAME_ANY)
-            imports.append(("typing", "Any"))
+            imports.append(Import("typing", "Any"))
             changes.append(Change(get_range(node), "missing-arg-type"))
 
     if node.vararg:
@@ -157,12 +157,12 @@ def transform_func(node: AST, _: AST, ctx: AST) -> TransformerReturnType:
                     node.returns = ast.Name(id=ast.Constant(ctx.name), ctx=node)
                 else:
                     node.returns = ast.Name(id=name, ctx=node)
-                imports.append(("typing", "Any"))
+                imports.append(Import("typing", "Any"))
                 changes.append(Change(get_range(node), f"missing-return-type-{name.lower()}"))
 
     if not node.returns:
         node.returns = guess_return_type(node, ctx)
-        imports.append(("typing", "Any"))
+        imports.append(Import("typing", "Any"))
         changes.append(Change(get_range(node), "missing-return-type-any"))
 
     return changes, imports
