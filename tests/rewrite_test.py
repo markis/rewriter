@@ -16,7 +16,7 @@ def generate_new_source(source: str) -> str:
     mock_opts = Mock(spec=Options, filename="test.py", source=source, dry_run=True, verbose=True)
     tree = ast.parse(source)
 
-    changes, imports = walk(tree, transform)
+    changes, imports = walk(transform, tree)
 
     return unparse_tree(mock_opts, tree, changes, imports)
 

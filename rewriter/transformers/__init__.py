@@ -1,4 +1,3 @@
-import os
 import pkgutil
 from ast import AST
 from collections import defaultdict
@@ -35,6 +34,11 @@ def transform(node: AST, parent: AST, ctx: AST) -> MutableSequence[TransformerRe
     return [func(node, parent, ctx) for func in __registry[type(node)]]
 
 
-# automatically load every module in this folder and automatically register transformers
-for _, module, __ in pkgutil.iter_modules([os.path.dirname(__file__)]):
-    __import__(f"rewriter.transformers.{module}")
+def load_transformers(base_dir: str) -> None:
+    """
+    Automatically load every module in this folder, which will automatically register transformers
+    """
+
+    for _, module, __ in pkgutil.iter_modules([f"{base_dir}/transformers/"]):
+        del _, __
+        __import__(f"rewriter.transformers.{module}")
