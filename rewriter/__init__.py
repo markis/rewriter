@@ -7,11 +7,12 @@ from rewriter.options import Options
 from rewriter.parser import parse_tree, unparse_tree
 from rewriter.trackers.changes import Change
 from rewriter.trackers.imports import Import
-from rewriter.transformers import transform
+from rewriter.transformers import transform, transformer
 from rewriter.walker import walk
 
 __all__ = [
     "transform",
+    "transformer",
     "Options",
     "walk",
     "Import",
