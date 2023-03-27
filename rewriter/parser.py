@@ -1,5 +1,5 @@
 from ast import Module, parse, unparse
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Sequence
 from difflib import Differ
 
 from black import format_str
@@ -17,16 +17,17 @@ def parse_tree(opts: Options) -> Module:
 
 
 def unparse_tree(
-    opts: Options, tree: Module, changes: MutableSequence[Change], imports: Sequence[Import]
+    opts: Options, tree: Module, changes: Sequence[Change], imports: Sequence[Import]
 ) -> str:
     if not changes:
         return opts.source
 
     try:
-        changes += update_tree(tree, imports)
+        updated_changes = list(changes)
+        updated_changes += update_tree(tree, imports)
         result = unparse(tree)
         reformatted = reformat(result)
-        final = merge_new_code(opts, reformatted, changes)
+        final = merge_new_code(opts, reformatted, updated_changes)
         if not opts.dry_run:
             with open(opts.filename, "w") as f:
                 f.write(final)

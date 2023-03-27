@@ -1,3 +1,4 @@
+import os
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
@@ -7,11 +8,12 @@ from rewriter.options import Options
 from rewriter.parser import parse_tree, unparse_tree
 from rewriter.trackers.changes import Change
 from rewriter.trackers.imports import Import
-from rewriter.transformers import transform
+from rewriter.transformers import load_transformers, transform, transformer
 from rewriter.walker import walk
 
 __all__ = [
     "transform",
+    "transformer",
     "Options",
     "walk",
     "Import",
@@ -20,7 +22,8 @@ __all__ = [
     "unparse_tree",
 ]
 
-COMPILED = Path(__file__).suffix in (".pyd", ".so")
+COMPILED: bool = Path(__file__).suffix in (".pyd", ".so")
+load_transformers(os.path.dirname(__file__))
 
 
 def parse_options(args: Any = sys.argv[1:]) -> Options:
@@ -45,9 +48,7 @@ def parse_options(args: Any = sys.argv[1:]) -> Options:
 def main() -> None:
     opts = parse_options()
     tree = parse_tree(opts)
-
-    changes, imports = walk(tree, transform)
-
+    changes, imports = walk(transform, tree)
     unparse_tree(opts, tree, changes, imports)
 
 
