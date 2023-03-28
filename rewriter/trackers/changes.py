@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 
 Range = tuple[int, int]
@@ -10,7 +10,7 @@ class Change:
     type: str
 
 
-def get_change_ranges(changes: Sequence[Change]) -> set[int]:
+def get_change_ranges(changes: Iterable[Change]) -> Collection[int]:
     ranges: set[int] = set()
     for stat in changes:
         start, end = stat.range

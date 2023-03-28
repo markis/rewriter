@@ -1,6 +1,6 @@
 import ast
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Iterable
 from dataclasses import dataclass
 from operator import attrgetter
 
@@ -15,7 +15,7 @@ class Import:
     name: str
 
 
-def update_tree(tree: ast.Module, imports: Sequence[Import]) -> Sequence[Change]:
+def update_tree(tree: ast.Module, imports: Iterable[Import]) -> Iterable[Change]:
     changes: list[Change] = []
     current = [node for node in tree.body if isinstance(node, ast.Import | ast.ImportFrom)]
     current.sort(key=attrgetter("lineno"))

@@ -1,14 +1,14 @@
 import pkgutil
 from ast import AST
 from collections import defaultdict
-from collections.abc import Callable, MutableSequence
+from collections.abc import Callable, Iterable
 
 from rewriter.trackers.changes import Change
 from rewriter.trackers.imports import Import
 
-TransformerReturnType = tuple[MutableSequence[Change], MutableSequence[Import]]
+TransformerReturnType = tuple[Iterable[Change], Iterable[Import]]
 Transformer = Callable[[AST, AST, AST], TransformerReturnType]
-Transform = Callable[[AST, AST, AST], MutableSequence[TransformerReturnType]]
+Transform = Callable[[AST, AST, AST], Iterable[TransformerReturnType]]
 
 __all__ = ["Transform", "TransformerReturnType", "transform", "transformer"]
 
@@ -27,7 +27,7 @@ def transformer(*types: type[AST]) -> Callable[[Transformer], None]:
     return wrapper
 
 
-def transform(node: AST, parent: AST, ctx: AST) -> MutableSequence[TransformerReturnType]:
+def transform(node: AST, parent: AST, ctx: AST) -> Iterable[TransformerReturnType]:
     """
     Transform a node using the transformers in the registry
     """

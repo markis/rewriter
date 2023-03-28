@@ -17,11 +17,6 @@ def transform_args(node: ast.AST, parent: ast.AST, ctx: ast.AST) -> TransformerR
     if not isinstance(node, ast.arguments):
         return changes, imports
 
-    def get_range(node: ast.arg) -> tuple[int, int]:
-        lineno = node.lineno
-        end_lineno = node.end_lineno or node.lineno
-        return (lineno, end_lineno)
-
     def transform_arg(node: ast.arg, _: ast.AST, ctx: ast.AST) -> None:
         if isinstance(ctx, ast.ClassDef) and node.arg in (NAME_CLS, NAME_SELF):
             return
@@ -29,7 +24,7 @@ def transform_args(node: ast.AST, parent: ast.AST, ctx: ast.AST) -> TransformerR
         if not node.annotation:
             node.annotation = ast.Name(id=NAME_ANY)
             imports.append(Import("typing", "Any"))
-            changes.append(Change(get_range(node), "missing-arg-type"))
+            changes.append(Change(_get_range(node), "missing-arg-type"))
 
     if node.vararg:
         transform_arg(node.vararg, parent, ctx)
@@ -47,3 +42,9 @@ def transform_args(node: ast.AST, parent: ast.AST, ctx: ast.AST) -> TransformerR
         transform_arg(arg, parent, ctx)
 
     return changes, imports
+
+
+def _get_range(node: ast.arg) -> tuple[int, int]:
+    lineno = node.lineno
+    end_lineno = node.end_lineno or node.lineno
+    return (lineno, end_lineno)
