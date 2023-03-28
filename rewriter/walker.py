@@ -1,5 +1,6 @@
 import ast
 from collections.abc import Sequence
+from itertools import chain
 from typing import overload
 
 from rewriter.transformers import Transform, TransformerReturnType
@@ -38,20 +39,20 @@ def walk(
     result: TransformerReturnType = ([], [])
     if isinstance(node, Sequence):
         for n in node:
-            merge(result, walk(transform, n, parent, ctx))
+            result = merge(result, walk(transform, n, parent, ctx))
     else:
         if isinstance(node, ast.Module | ast.ClassDef):
-            merge(result, walk(transform, node.body, node, node))
+            result = merge(result, walk(transform, node.body, node, node))
         elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-            merge(result, walk(transform, node.body, node, ctx))
-            merge(result, walk(transform, node.args, node, ctx))
+            result = merge(result, walk(transform, node.body, node, ctx))
+            result = merge(result, walk(transform, node.args, node, ctx))
         elif hasattr(node, "body"):
-            merge(result, walk(transform, getattr(node, "body"), parent, ctx))
+            result = merge(result, walk(transform, getattr(node, "body"), parent, ctx))
         elif hasattr(node, "args"):
-            merge(result, walk(transform, getattr(node, "args"), parent, ctx))
+            result = merge(result, walk(transform, getattr(node, "args"), parent, ctx))
 
         for new_result in transform(node, parent, ctx):
-            merge(result, new_result)
+            result = merge(result, new_result)
 
     return result
 
@@ -59,10 +60,13 @@ def walk(
 def merge(
     result: TransformerReturnType,
     new_result: TransformerReturnType,
-) -> None:
+) -> TransformerReturnType:
     changes, imports = result
     new_changes, new_imports = new_result
+
     if new_changes:
-        changes.extend(new_changes)
+        changes = chain(changes, new_changes)
     if new_imports:
-        imports.extend(new_imports)
+        imports = chain(imports, new_imports)
+
+    return (changes, imports)

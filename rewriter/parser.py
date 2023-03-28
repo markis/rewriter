@@ -1,6 +1,7 @@
 from ast import Module, parse, unparse
-from collections.abc import Sequence
+from collections.abc import Iterable
 from difflib import Differ
+from itertools import chain
 
 from black import format_str
 from black.mode import Mode, TargetVersion
@@ -17,14 +18,13 @@ def parse_tree(opts: Options) -> Module:
 
 
 def unparse_tree(
-    opts: Options, tree: Module, changes: Sequence[Change], imports: Sequence[Import]
+    opts: Options, tree: Module, changes: Iterable[Change], imports: Iterable[Import]
 ) -> str:
     if not changes:
         return opts.source
 
     try:
-        updated_changes = list(changes)
-        updated_changes += update_tree(tree, imports)
+        updated_changes = chain(changes, update_tree(tree, imports))
         result = unparse(tree)
         reformatted = reformat(result)
         final = merge_new_code(opts, reformatted, updated_changes)
@@ -38,7 +38,7 @@ def unparse_tree(
         return opts.source
 
 
-def merge_new_code(opts: Options, result: str, changes: Sequence[Change]) -> str:
+def merge_new_code(opts: Options, result: str, changes: Iterable[Change]) -> str:
     result_lines = result.strip().splitlines()
     original = opts.source.splitlines()
     ranges = get_change_ranges(changes)
