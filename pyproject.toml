@@ -11,7 +11,19 @@ authors = [
 description = "Rewrite python code"
 readme = "README.md"
 requires-python = ">=3.10"
-classifiers = []
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Software Development :: Quality Assurance",
+]
 dependencies = [
   "black>=23"
 ]
@@ -69,21 +81,8 @@ build = "cp3*-*"
 skip = ["*-manylinux_i686", "*-musllinux_*", "*-win32", "pp-*"]
 test-requires = ["pytest>=6.1.1"]
 test-command = 'rewriter --help && pytest {project} -k "not incompatible_with_mypyc"'
-# Skip trying to test arm64 builds on Intel Macs. (so cross-compilation doesn't
-# straight up crash)
-# test-skip = ["*-macosx_arm64", "*-macosx_universal2:arm64"]
 
 [tool.cibuildwheel.environment]
-HATCH_BUILD_HOOKS_ENABLE = "1"
-MYPYC_OPT_LEVEL = "3"
-MYPYC_DEBUG_LEVEL = "0"
-
-[tool.cibuildwheel.linux]
-before-build = [
-    "yum install -y clang gcc",
-]
-
-[tool.cibuildwheel.linux.environment]
 HATCH_BUILD_HOOKS_ENABLE = "1"
 MYPYC_OPT_LEVEL = "3"
 MYPYC_DEBUG_LEVEL = "0"
