@@ -31,6 +31,7 @@ dependencies = [
 [project.scripts]
 rewriter = "rewriter:main"
 
+
 [tool.coverage.run]
 branch = true
 source = [
@@ -40,6 +41,7 @@ omit = [
   "rewriter/__main__.py"
 ]
 
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-q"
@@ -47,19 +49,23 @@ testpaths = [
   "tests",
 ]
 
+
 [tool.black]
 target-version = ["py310"]
 line-length = 100
+
 
 [tool.mypy]
 packages = ["rewriter"]
 strict = true
 mypy_path = "typings"
 
+
 [tool.ruff]
 target-version = "py310"
 line-length = 100
 select = [ "E", "F", "W", "Q", "UP", "I", "N" ]
+
 
 [tool.hatch]
 
@@ -69,20 +75,20 @@ dependencies = [
   "mypy==1.1.1",
   "black>=23",
 ]
+opt_level = "3"
+debug_level = "0"
+
 
 [tool.cibuildwheel]
 build-frontend = "build"
 build-verbosity = 1
+
 # Target environments:
 # - Python: CPython 3.7+ only
 # - Architecture (64-bit only): amd64 / x86_64, universal2, and arm64
 # - OS: Linux (no musl), Windows, and macOS
 build = "cp3*-*"
 skip = ["*-manylinux_i686", "*-musllinux_*", "*-win32", "pp-*"]
+
 test-requires = ["pytest>=6.1.1"]
 test-command = 'rewriter --help && pytest {project} -k "not incompatible_with_mypyc"'
-
-[tool.cibuildwheel.environment]
-HATCH_BUILD_HOOKS_ENABLE = "1"
-MYPYC_OPT_LEVEL = "3"
-MYPYC_DEBUG_LEVEL = "0"
