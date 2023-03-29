@@ -75,6 +75,9 @@ dependencies = [
   "mypy==1.1.1",
   "black>=23",
 ]
+
+# mypycify options:
+# https://github.com/python/mypy/blob/v1.1.1/mypyc/build.py#L446
 opt_level = "3"
 debug_level = "0"
 
@@ -92,3 +95,5 @@ skip = ["*-manylinux_i686", "*-musllinux_*", "*-win32", "pp-*"]
 
 test-requires = ["pytest>=6.1.1"]
 test-command = 'rewriter --help && pytest {project} -k "not incompatible_with_mypyc"'
+# Skip tests on arm64 and suppress the warning that cibuildwheel can't run test
+test-skip = ["*-macosx_arm64", "*-macosx_universal2:arm64"]
