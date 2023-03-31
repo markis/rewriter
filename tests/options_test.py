@@ -8,7 +8,7 @@ def test_options_parsing() -> None:
 
     assert args.dry_run
     assert args.verbose
-    assert args.filename
+    assert args.filenames
 
 
 def test_help() -> None:

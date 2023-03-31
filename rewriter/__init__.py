@@ -1,6 +1,6 @@
 import os
 import sys
-from argparse import ArgumentParser
+from argparse import REMAINDER, ArgumentParser
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +31,7 @@ def parse_options(args: Any = sys.argv[1:]) -> Options:
     parser = ArgumentParser(
         prog="rewriter", description=f"Rewrite python code (compiled: {is_compiled})"
     )
-    parser.add_argument("filename", help="file to rewrite")
+    parser.add_argument("filenames", help="file to rewrite", nargs=REMAINDER)
     parser.add_argument(
         "-d",
         "--dry-run",
@@ -47,9 +47,13 @@ def parse_options(args: Any = sys.argv[1:]) -> Options:
 
 def main() -> None:
     opts = parse_options()
-    tree = parse_tree(opts)
-    changes, imports = walk(transform, tree)
-    unparse_tree(opts, tree, changes, imports)
+
+    for file in opts.filenames:
+        opts.filename = file
+
+        tree = parse_tree(opts)
+        changes, imports = walk(transform, tree)
+        unparse_tree(opts, tree, changes, imports)
 
 
 if __name__ == "__main__":
