@@ -49,7 +49,6 @@ def parse_options(args: Any = sys.argv[1:]) -> Options:
 def main() -> None:
     opts = parse_options()
 
-    print(opts)
     for file in opts.filenames:
         opts.filename = file
 
