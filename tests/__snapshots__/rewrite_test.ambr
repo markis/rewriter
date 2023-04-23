@@ -1,0 +1,22 @@
+# serializer version: 1
+# name: test_class_definition
+  '''
+  class Test:
+      def __init__(self, *, x: Any) -> None:
+          pass
+  
+      def do(self, x: Any) -> Any:
+          return 1 / 2
+  
+  '''
+# ---
+# name: test_func_definition
+  '''
+  from typing import Any
+  
+  
+  def test(x: Any, *args: Any, **kwargs: Any) -> None:
+      pass
+  
+  '''
+# ---
