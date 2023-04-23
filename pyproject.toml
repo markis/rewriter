@@ -82,11 +82,8 @@ select = [ "E", "F", "W", "Q", "UP", "I", "N" ]
 [tool.hatch]
 
 [tool.hatch.build.targets.wheel.hooks.mypyc]
-dependencies = [
-  "hatch-mypyc>=0.13.0",
-  "mypy==1.1.1",
-  "black>=23",
-]
+require-runtime-dependencies = true
+dependencies = ["hatch-mypyc"]
 
 # mypycify options:
 # https://github.com/python/mypy/blob/v1.1.1/mypyc/build.py#L446
@@ -109,6 +106,6 @@ skip = ["*-manylinux_i686", "*-musllinux_*", "*-win32", "pp-*"]
 # Ensure cli can execute with compiled code
 # Run test-suite with compiled code
 # Skip tests on arm64 and suppress the warning that cibuildwheel can't run tests
-before-test = ["pip install '.[test]'"]
+test-requires = [".[test]"]
 test-command = "rewriter --help && pytest {project}"
 test-skip = ["*-macosx_arm64", "*-macosx_universal2:arm64"]
