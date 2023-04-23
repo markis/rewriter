@@ -107,6 +107,6 @@ skip = ["*-manylinux_i686", "*-musllinux_*", "*-win32", "pp-*"]
 # Ensure cli can execute with compiled code
 # Run test-suite with compiled code
 # Skip tests on arm64 and suppress the warning that cibuildwheel can't run tests
-test-requires = ["pytest>=6.1.1"]
+test-requires = ["pytest>=6.1.1","syrupy>=4.0.1"]
 test-command = "rewriter --help && pytest {project}"
 test-skip = ["*-macosx_arm64", "*-macosx_universal2:arm64"]
