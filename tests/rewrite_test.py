@@ -1,6 +1,5 @@
 import ast
 from textwrap import dedent
-from typing import Any
 from unittest.mock import Mock
 
 from syrupy.assertion import SnapshotAssertion
@@ -35,7 +34,7 @@ def test_func_definition(snapshot: SnapshotAssertion) -> None:
     assert generate_new_source(source) == snapshot
 
 
-def test_class_definition(snapshot: Any) -> None:
+def test_class_definition(snapshot: SnapshotAssertion) -> None:
     source = format_str(
         """
         class Test:
