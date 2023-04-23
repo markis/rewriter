@@ -1,6 +1,9 @@
 import ast
 from textwrap import dedent
+from typing import Any
 from unittest.mock import Mock
+
+from syrupy.assertion import SnapshotAssertion
 
 from rewriter.options import Options
 from rewriter.parser import unparse_tree
@@ -21,36 +24,20 @@ def generate_new_source(source: str) -> str:
     return unparse_tree(mock_opts, tree, changes, imports)
 
 
-def test_func_definition() -> None:
+def test_func_definition(snapshot: SnapshotAssertion) -> None:
     source = format_str(
         """
-        from __future__ import annotations
-
-
         def test(x, *args, **kwargs):
             pass
         """
     )
-    expected = format_str(
-        """
-        from __future__ import annotations
-        from typing import Any
+
+    assert generate_new_source(source) == snapshot
 
 
-        def test(x: Any, *args: Any, **kwargs: Any) -> None:
-            pass
-        """
-    )
-
-    assert generate_new_source(source) == expected
-
-
-def test_class_definition() -> None:
+def test_class_definition(snapshot: Any) -> None:
     source = format_str(
         """
-        from __future__ import annotations
-
-
         class Test:
             def __init__(self, *, x):
                 pass
@@ -59,19 +46,5 @@ def test_class_definition() -> None:
                 return 1 / 2
         """
     )
-    expected = format_str(
-        """
-        from __future__ import annotations
-        from typing import Any
 
-
-        class Test:
-            def __init__(self, *, x: Any) -> None:
-                pass
-
-            def do(self, x: Any) -> Any:
-                return 1 / 2
-        """
-    )
-
-    assert generate_new_source(source) == expected
+    assert generate_new_source(source) == snapshot
