@@ -29,6 +29,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+all = ["rewriter[dev,test]"]
 test = [
   "pytest",
   "syrupy",
